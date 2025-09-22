@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useAuthStore } from '@/store/auth';
 import { Header } from '@/components/layout/Header';
+import { apiClient } from '@/lib/api';
 import {
   Cloud,
   Network,
@@ -36,6 +38,11 @@ const customStyles = `
 
 export default function Landing() {
   const { isAuthenticated } = useAuthStore();
+
+  // Call backend API to log landing page visit
+  useEffect(() => {
+    apiClient.getLanding().catch(console.error);
+  }, []);
 
   return (
     <>
