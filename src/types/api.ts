@@ -10,6 +10,17 @@ export interface User {
   apps_available: string;
 }
 
+// Deployment stage status
+export type StageStatus = 'pending' | 'creating' | 'ready' | 'running' | 'error';
+
+// Deployment stages for granular progress tracking
+export interface DeploymentStages {
+  deployment: StageStatus;
+  pod: StageStatus;
+  service: StageStatus;
+  ingress: StageStatus;
+}
+
 export interface App {
   id: string;
   name: string;
@@ -19,6 +30,10 @@ export interface App {
   is_deployed: boolean;
   novnc_url?: string;
   vnc_pass?: string;
+  // New granular status fields
+  stages?: DeploymentStages;
+  message?: string;
+  ready?: boolean;
 }
 
 export interface AppsResponse {

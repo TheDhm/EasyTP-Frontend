@@ -8,8 +8,18 @@ import type {
   AppsResponse,
   FilesResponse,
   UsageStatsResponse,
-  APIError
+  APIError,
+  App,
 } from '@/types/api';
+
+// Helper to check if any app is in a transitional state
+const hasTransitionalApps = (apps: App[]): boolean => {
+  return apps.some(app =>
+    app.status === 'starting' ||
+    app.status === 'stopping' ||
+    (app.is_deployed && !app.ready)
+  );
+};
 
 // Dashboard hook
 export const useDashboard = (): UseQueryResult<DashboardResponse> => {
@@ -22,7 +32,7 @@ export const useDashboard = (): UseQueryResult<DashboardResponse> => {
   });
 };
 
-// Apps hooks
+// Apps hooks with dynamic polling
 export const useApps = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
@@ -30,16 +40,35 @@ export const useApps = () => {
     queryKey: queryKeys.apps,
     queryFn: () => apiClient.getApps(),
     enabled: isAuthenticated,
-    refetchInterval: 30000, // Refetch every 30 seconds for real-time status
+    // Dynamic refetch interval based on app states
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!data) return 30000;
+
+      // Transform to check for transitional apps
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const apps = Object.entries(data.apps).map(([, appData]: [string, any]) => ({
+        ...appData,
+        status: appData.status || (appData.deployment_status ? 'running' : 'stopped'),
+      }));
+
+      // Fast polling (200ms = 1x/sec) during startup, slower (30s) when stable
+      return hasTransitionalApps(apps as App[]) ? 200 : 30000;
+    },
     select: (data: AppsResponse) => {
-      // Transform the apps object to an array
-      return Object.entries(data.apps).map(([appName, appData]) => ({
+      // Transform the apps object to an array with new status fields
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return Object.entries(data.apps).map(([appName, appData]: [string, any]) => ({
         ...appData,
         id: appName,
         name: appName,
         description: undefined, // Backend doesn't provide description yet
-        status: appData.deployment_status ? 'running' : 'stopped',
-      }));
+        // Use granular status from backend, fallback to legacy behavior
+        status: appData.status || (appData.deployment_status ? 'running' : 'stopped'),
+        stages: appData.stages,
+        message: appData.message,
+        ready: appData.ready,
+      })) as App[];
     },
   });
 };
@@ -50,7 +79,7 @@ export const useStartApp = () => {
   return useMutation({
     mutationFn: (appName: string) => apiClient.startApp(appName),
     onSuccess: (data: any, appName) => {
-      // Optimistically update the app status immediately
+      // Optimistically update the app status immediately with new granular fields
       queryClient.setQueryData(queryKeys.apps, (oldData: any) => {
         // Ensure oldData exists and is an array (transformed data)
         if (!oldData || !Array.isArray(oldData)) {
@@ -62,9 +91,18 @@ export const useStartApp = () => {
             return {
               ...app,
               status: 'starting',
-              deployment_status: true,
+              deployment_status: false, // Not fully ready yet
               is_deployed: true,
-              novnc_url: data?.novnc_url || app.novnc_url
+              novnc_url: data?.novnc_url || app.novnc_url,
+              // New granular status fields
+              ready: false,
+              message: data?.message || 'Creating deployment...',
+              stages: data?.stages || {
+                deployment: 'creating',
+                pod: 'pending',
+                service: 'pending',
+                ingress: 'pending',
+              },
             };
           }
           return app;

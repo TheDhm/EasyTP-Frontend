@@ -1,8 +1,10 @@
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useApps, useStartApp, useStopApp } from '@/hooks/use-api';
+import type { DeploymentStages, StageStatus } from '@/types/api';
 import {
   Play,
   Square,
@@ -12,13 +14,117 @@ import {
   Server,
   Copy,
   Link as LinkIcon,
-  ArrowLeft
+  ArrowLeft,
+  CheckCircle2,
+  Circle,
+  XCircle,
+  ChevronRight
 } from 'lucide-react';
+
+// Warming up delay in ms after all stages are ready (for Cloudflare propagation)
+const WARMING_UP_DELAY_MS = 1500;
+
+// Deployment stage configuration
+const DEPLOYMENT_STEPS = [
+  { key: 'deployment' as const, label: 'Deployment', shortLabel: 'Deploy' },
+  { key: 'pod' as const, label: 'Container', shortLabel: 'Pod' },
+  { key: 'service' as const, label: 'Network', shortLabel: 'Net' },
+  { key: 'ingress' as const, label: 'Routing', shortLabel: 'Route' },
+];
+
+// Stage status icon component
+const StageStatusIcon = ({ status }: { status: StageStatus }) => {
+  switch (status) {
+    case 'ready':
+    case 'running':
+      return <CheckCircle2 className="w-4 h-4 text-green-500" />;
+    case 'creating':
+      return <Loader2 className="w-4 h-4 text-yellow-500 animate-spin" />;
+    case 'error':
+      return <XCircle className="w-4 h-4 text-red-500" />;
+    case 'pending':
+    default:
+      return <Circle className="w-4 h-4 text-gray-400" />;
+  }
+};
+
+// Deployment progress stepper component
+const DeploymentProgress = ({
+  stages,
+  message,
+}: {
+  stages: DeploymentStages;
+  message?: string;
+}) => {
+  return (
+    <div className="space-y-3 p-4 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+      {/* Progress steps */}
+      <div className="flex items-center justify-between gap-1">
+        {DEPLOYMENT_STEPS.map((step, index) => (
+          <div key={step.key} className="flex items-center">
+            <div className="flex flex-col items-center">
+              <StageStatusIcon status={stages[step.key]} />
+              <span className="text-xs text-gray-600 dark:text-gray-400 mt-1 hidden sm:block">
+                {step.label}
+              </span>
+              <span className="text-xs text-gray-600 dark:text-gray-400 mt-1 sm:hidden">
+                {step.shortLabel}
+              </span>
+            </div>
+            {index < DEPLOYMENT_STEPS.length - 1 && (
+              <ChevronRight className="w-4 h-4 text-gray-400 mx-1 flex-shrink-0" />
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Status message */}
+      {message && (
+        <p className="text-sm text-yellow-700 dark:text-yellow-300 text-center">
+          {message}
+        </p>
+      )}
+    </div>
+  );
+};
 
 export default function Apps() {
   const { data: apps, isLoading, error } = useApps();
   const startAppMutation = useStartApp();
   const stopAppMutation = useStopApp();
+
+  // Track which apps have completed warming up (after ready=true + delay)
+  const [warmedUpApps, setWarmedUpApps] = useState<Set<string>>(new Set());
+  // Track when each app became ready (to calculate warming up timer)
+  const readyTimestamps = useRef<Map<string, number>>(new Map());
+
+  // Handle warming up delay when apps become ready
+  useEffect(() => {
+    if (!apps) return;
+
+    apps.forEach((app) => {
+      const isReady = app.status === 'running' && app.ready;
+      const isWarmedUp = warmedUpApps.has(app.id);
+      const hasTimestamp = readyTimestamps.current.has(app.id);
+
+      if (isReady && !isWarmedUp && !hasTimestamp) {
+        // App just became ready - record timestamp and start timer
+        readyTimestamps.current.set(app.id, Date.now());
+
+        setTimeout(() => {
+          setWarmedUpApps((prev) => new Set(prev).add(app.id));
+        }, WARMING_UP_DELAY_MS);
+      } else if (!isReady && (isWarmedUp || hasTimestamp)) {
+        // App is no longer ready - clear warming up state
+        readyTimestamps.current.delete(app.id);
+        setWarmedUpApps((prev) => {
+          const next = new Set(prev);
+          next.delete(app.id);
+          return next;
+        });
+      }
+    });
+  }, [apps, warmedUpApps]);
 
   const handleStartApp = (appId: string) => {
     startAppMutation.mutate(appId);
@@ -26,6 +132,16 @@ export default function Apps() {
 
   const handleStopApp = (appId: string) => {
     stopAppMutation.mutate(appId);
+  };
+
+  // Check if an app is fully ready (backend ready + warming up complete)
+  const isAppFullyReady = (appId: string, backendReady: boolean | undefined) => {
+    return backendReady && warmedUpApps.has(appId);
+  };
+
+  // Check if an app is in warming up state
+  const isAppWarmingUp = (appId: string, backendReady: boolean | undefined) => {
+    return backendReady && !warmedUpApps.has(appId);
   };
 
   // Build VNC URL with full parameters for direct connection
@@ -169,15 +285,34 @@ export default function Apps() {
                 </div>
 
                 {/* App Details */}
-                <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
                   <div className="flex justify-between">
                     <span>Deployed:</span>
                     <span>{app.is_deployed ? 'Yes' : 'No'}</span>
                   </div>
                 </div>
 
-                {/* VNC Connection Info - only show when running and has VNC access */}
-                {app.status === 'running' && app.novnc_url && app.vnc_pass && (
+                {/* Deployment Progress - show when starting/transitioning */}
+                {app.status === 'starting' && app.stages && (
+                  <div className="mb-4">
+                    <DeploymentProgress stages={app.stages} message={app.message} />
+                  </div>
+                )}
+
+                {/* Warming up indicator - show when backend ready but still warming up */}
+                {app.status === 'running' && isAppWarmingUp(app.id, app.ready) && (
+                  <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-lg">
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 text-green-600 dark:text-green-400 animate-spin" />
+                      <p className="text-sm text-green-700 dark:text-green-300">
+                        Warming up connection...
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* VNC Connection Info - only show when FULLY READY (all stages + warming up complete) */}
+                {app.status === 'running' && isAppFullyReady(app.id, app.ready) && app.novnc_url && app.vnc_pass && (
                   <div className="space-y-4 mb-6 p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg">
                     {/* Direct VNC Link */}
                     <div>
@@ -237,7 +372,8 @@ export default function Apps() {
                         )}
                         Stop
                       </Button>
-                      {app.novnc_url && (
+                      {/* Only show Direct Access button when app is fully ready (including warming up) */}
+                      {isAppFullyReady(app.id, app.ready) && app.novnc_url && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -274,6 +410,13 @@ export default function Apps() {
                     </Button>
                   )}
                 </div>
+
+                {/* Demo notice - show for stopped apps */}
+                {app.status === 'stopped' && (
+                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 text-center">
+                    Demo mode: Sessions are limited to 3 minutes.
+                  </p>
+                )}
 
                 {/* Error Messages */}
                 {(startAppMutation.error || stopAppMutation.error) && (
