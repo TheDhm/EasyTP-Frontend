@@ -15,7 +15,9 @@ import {
   ExternalLink,
   Github as GitHubIcon,
   Heart,
-  CheckCircle
+  CheckCircle,
+  GitBranch,
+  Play
 } from 'lucide-react';
 
 // Custom CSS animations
@@ -93,16 +95,20 @@ export default function Landing() {
               React
             </span>
             <span className="bg-white/15 backdrop-blur-md border border-white/20 rounded-full px-6 py-3 text-white font-medium text-sm transition-all duration-300 hover:bg-white/25 hover:-translate-y-1 flex items-center gap-2">
-              <Code size={16} />
-              Django
-            </span>
-            <span className="bg-white/15 backdrop-blur-md border border-white/20 rounded-full px-6 py-3 text-white font-medium text-sm transition-all duration-300 hover:bg-white/25 hover:-translate-y-1 flex items-center gap-2">
               <Database size={16} />
               Django REST Framework
             </span>
             <span className="bg-white/15 backdrop-blur-md border border-white/20 rounded-full px-6 py-3 text-white font-medium text-sm transition-all duration-300 hover:bg-white/25 hover:-translate-y-1 flex items-center gap-2">
               <Shield size={16} />
               Cloud-Native
+            </span>
+            <span className="bg-white/15 backdrop-blur-md border border-white/20 rounded-full px-6 py-3 text-white font-medium text-sm transition-all duration-300 hover:bg-white/25 hover:-translate-y-1 flex items-center gap-2">
+              <GitBranch size={16} />
+              Flux CD
+            </span>
+            <span className="bg-white/15 backdrop-blur-md border border-white/20 rounded-full px-6 py-3 text-white font-medium text-sm transition-all duration-300 hover:bg-white/25 hover:-translate-y-1 flex items-center gap-2">
+              <Play size={16} />
+              GitHub Actions
             </span>
           </div>
 
