@@ -10,15 +10,12 @@ import type {
   UsageStatsResponse,
   APIError
 } from '@/types/api';
-
-// API Configuration
-const API_BASE_URL = 'https://api.melekabderrahmane.com';
-// const API_BASE_URL = 'http://127.0.0.1:8000/';
+import config from './config';
 
 class APIClient {
   private baseURL: string;
 
-  constructor(baseURL: string = API_BASE_URL) {
+  constructor(baseURL: string = config.api.baseUrl) {
     this.baseURL = baseURL;
   }
 
