@@ -141,7 +141,7 @@ export default function Landing() {
 
             <div className="mt-6">
               <Button asChild size="lg" className="bg-gray-900/90 hover:bg-black text-white border border-gray-700 hover:border-gray-600 px-8 py-3 rounded-full transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl">
-                <a href="https://github.com/TheDhm/EasyTP" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                <a href="https://github.com/TheDhm/EasyTP-Backend" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
                   <GitHubIcon size={20} />
                   View Source
                 </a>
@@ -294,7 +294,7 @@ spec:
               Complete source code, Kubernetes manifests, and deployment scripts available for exploration and contribution.
             </p>
             <Button asChild size="lg" className="bg-gradient-to-r from-gray-800 to-gray-900 hover:from-gray-900 hover:to-black text-white px-8 py-3 rounded-full transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl">
-              <a href="https://github.com/TheDhm/EasyTP" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3">
+              <a href="https://github.com/TheDhm/EasyTP-Backend" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3">
                 <GitHubIcon size={20} />
                 View on GitHub
                 <ExternalLink size={16} />
