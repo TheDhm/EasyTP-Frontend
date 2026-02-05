@@ -124,7 +124,8 @@ export default function Apps() {
         });
       }
     });
-  }, [apps, warmedUpApps]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apps]);
 
   const handleStartApp = (appId: string) => {
     startAppMutation.mutate(appId);

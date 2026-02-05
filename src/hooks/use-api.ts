@@ -52,8 +52,8 @@ export const useApps = () => {
         status: appData.status || (appData.deployment_status ? 'running' : 'stopped'),
       }));
 
-      // Fast polling (200ms = 1x/sec) during startup, slower (30s) when stable
-      return hasTransitionalApps(apps as App[]) ? 200 : 30000;
+      // Fast polling (400ms) during startup, slower (15s) when stable
+      return hasTransitionalApps(apps as App[]) ? 400 : 15000;
     },
     select: (data: AppsResponse) => {
       // Transform the apps object to an array with new status fields
