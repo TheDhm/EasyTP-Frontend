@@ -17,7 +17,8 @@ const hasTransitionalApps = (apps: App[]): boolean => {
   return apps.some(app =>
     app.status === 'starting' ||
     app.status === 'stopping' ||
-    (app.is_deployed && !app.ready)
+    // Only consider transitional if NOT stopped (fixes stale is_deployed state)
+    (app.status !== 'stopped' && app.is_deployed && !app.ready)
   );
 };
 
