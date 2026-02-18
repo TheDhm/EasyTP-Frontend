@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,6 +46,8 @@ export default function Signup() {
   const navigate = useNavigate();
   const { signup, isLoading } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileInstance>(null);
 
   const {
     register,
@@ -55,6 +58,10 @@ export default function Signup() {
   });
 
   const onSubmit = async (data: SignupForm) => {
+    if (!turnstileToken) {
+      setError('Please complete the verification first.');
+      return;
+    }
     try {
       setError(null);
       await signup({
@@ -62,10 +69,13 @@ export default function Signup() {
         email: data.email,
         password: data.password,
         password_confirm: data.confirmPassword,
+        turnstile_token: turnstileToken,
       });
       navigate('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Signup failed');
+      turnstileRef.current?.reset();
+      setTurnstileToken(null);
     }
   };
 
@@ -146,7 +156,21 @@ export default function Signup() {
             )}
           </div>
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <div className="flex justify-center">
+            <Turnstile
+              ref={turnstileRef}
+              siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+              onSuccess={(token) => setTurnstileToken(token)}
+              onError={() => {
+                setError('Verification failed. Please try again.');
+                setTurnstileToken(null);
+              }}
+              onExpire={() => setTurnstileToken(null)}
+              options={{ theme: 'auto', size: 'normal' }}
+            />
+          </div>
+
+          <Button type="submit" className="w-full" disabled={!turnstileToken || isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Create Account
           </Button>

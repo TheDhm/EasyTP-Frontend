@@ -16,7 +16,7 @@ interface AuthState {
   login: (credentials: LoginRequest) => Promise<void>;
   signup: (userData: SignupRequest) => Promise<void>;
   logout: () => void;
-  continueAsGuest: () => Promise<void>;
+  continueAsGuest: (turnstileToken: string) => Promise<void>;
   refreshAuth: () => Promise<boolean>;
   clearError: () => void;
 
@@ -102,11 +102,11 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      continueAsGuest: async () => {
+      continueAsGuest: async (turnstileToken: string) => {
         try {
           set({ isLoading: true, error: null });
 
-          const response = await apiClient.continueAsGuest();
+          const response = await apiClient.continueAsGuest({ turnstile_token: turnstileToken });
 
           set({
             user: response.user,

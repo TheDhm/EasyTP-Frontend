@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,6 +24,8 @@ export default function Login() {
   const isGuest = searchParams.get('guest') === 'true';
   const { login, continueAsGuest, isLoading } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileInstance>(null);
 
   const {
     register,
@@ -33,22 +36,34 @@ export default function Login() {
   });
 
   const onSubmit = async (data: LoginForm) => {
+    if (!turnstileToken) {
+      setError('Please complete the verification first.');
+      return;
+    }
     try {
       setError(null);
-      await login(data);
+      await login({ ...data, turnstile_token: turnstileToken });
       navigate('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
+      turnstileRef.current?.reset();
+      setTurnstileToken(null);
     }
   };
 
   const handleGuestLogin = async () => {
+    if (!turnstileToken) {
+      setError('Please complete the verification first.');
+      return;
+    }
     try {
       setError(null);
-      await continueAsGuest();
+      await continueAsGuest(turnstileToken);
       navigate('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Guest login failed');
+      turnstileRef.current?.reset();
+      setTurnstileToken(null);
     }
   };
 
@@ -73,10 +88,23 @@ export default function Login() {
             <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
               Guest access provides limited functionality for exploring the platform.
             </p>
+            <div className="flex justify-center">
+              <Turnstile
+                ref={turnstileRef}
+                siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                onSuccess={(token) => setTurnstileToken(token)}
+                onError={() => {
+                  setError('Verification failed. Please try again.');
+                  setTurnstileToken(null);
+                }}
+                onExpire={() => setTurnstileToken(null)}
+                options={{ theme: 'auto', size: 'normal' }}
+              />
+            </div>
             <Button
               onClick={handleGuestLogin}
               className="w-full"
-              disabled={isLoading}
+              disabled={!turnstileToken || isLoading}
             >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Continue as Guest
@@ -122,7 +150,21 @@ export default function Login() {
               )}
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <div className="flex justify-center">
+              <Turnstile
+                ref={turnstileRef}
+                siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                onSuccess={(token) => setTurnstileToken(token)}
+                onError={() => {
+                  setError('Verification failed. Please try again.');
+                  setTurnstileToken(null);
+                }}
+                onExpire={() => setTurnstileToken(null)}
+                options={{ theme: 'auto', size: 'normal' }}
+              />
+            </div>
+
+            <Button type="submit" className="w-full" disabled={!turnstileToken || isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Login
             </Button>

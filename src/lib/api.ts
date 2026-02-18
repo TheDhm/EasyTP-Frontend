@@ -2,6 +2,7 @@ import type {
   AuthResponse,
   LoginRequest,
   SignupRequest,
+  GuestRequest,
   TokenRefreshRequest,
   TokenRefreshResponse,
   DashboardResponse,
@@ -96,9 +97,10 @@ class APIClient {
     });
   }
 
-  async continueAsGuest(): Promise<AuthResponse> {
+  async continueAsGuest(data: GuestRequest): Promise<AuthResponse> {
     return this.request<AuthResponse>('/auth/continue-as-guest/', {
       method: 'POST',
+      body: JSON.stringify(data),
     });
   }
 

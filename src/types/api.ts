@@ -120,6 +120,7 @@ export interface UsageStatsResponse {
 export interface LoginRequest {
   username: string;
   password: string;
+  turnstile_token: string;
 }
 
 export interface SignupRequest {
@@ -127,6 +128,11 @@ export interface SignupRequest {
   email: string;
   password: string;
   password_confirm: string;
+  turnstile_token: string;
+}
+
+export interface GuestRequest {
+  turnstile_token: string;
 }
 
 export interface AuthResponse {
