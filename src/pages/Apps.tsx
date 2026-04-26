@@ -415,7 +415,7 @@ export default function Apps() {
                 {/* Demo notice - show for stopped apps */}
                 {app.status === 'stopped' && (
                   <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 text-center">
-                    Demo mode: Sessions are limited to 3 minutes.
+                    Demo mode: Sessions are limited to 5 minutes.
                   </p>
                 )}
 
