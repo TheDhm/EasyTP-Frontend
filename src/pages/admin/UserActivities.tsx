@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import {
   DropdownMenuCheckboxItem,
 } from '@/components/ui/dropdown-menu';
 import { useUsageStats } from '@/hooks/use-api';
+import { useDebounce } from '@/hooks/use-debounce';
 import type { UserActivity } from '@/types/api';
 import {
   Activity,
@@ -34,6 +35,12 @@ import {
   X,
   ChevronDown
 } from 'lucide-react';
+
+// Turn a 2-letter ISO country code into its flag emoji via regional indicators
+const countryFlag = (code?: string) =>
+  code && /^[A-Za-z]{2}$/.test(code)
+    ? String.fromCodePoint(...[...code.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65))
+    : '';
 
 // Activity type color and icon mapping
 const getActivityTypeInfo = (activityType: string) => {
@@ -124,8 +131,14 @@ const activityTypeOptions = [
 ];
 
 export default function UserActivities() {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const searchQuery = useDebounce(searchInput, 400);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset to the first page whenever the debounced search term changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   // Individual filter states for better UX
   const [selectedActivityTypes, setSelectedActivityTypes] = useState<string[]>([]);
@@ -136,9 +149,7 @@ export default function UserActivities() {
   // Build filters object
   const filters: Record<string, string> = {};
   if (selectedActivityTypes.length > 0) {
-    filters.activity_type = selectedActivityTypes.join(','); // Backend might expect comma-separated or we'll use first one
-    // For now, use first selected activity type (backend expects single value)
-    filters.activity_type = selectedActivityTypes[0];
+    filters.activity_type = selectedActivityTypes.join(',');
   }
   if (startDate) filters.start_date = startDate;
   if (endDate) filters.end_date = endDate;
@@ -153,8 +164,7 @@ export default function UserActivities() {
   const { data, isLoading, error } = useUsageStats(queryParams);
 
   const handleSearch = (query: string) => {
-    setSearchQuery(query);
-    setCurrentPage(1);
+    setSearchInput(query);
   };
 
   const handlePageChange = (newPage: number) => {
@@ -190,7 +200,7 @@ export default function UserActivities() {
     setSelectedActivityTypes([]);
     setStartDate('');
     setEndDate('');
-    setSearchQuery('');
+    setSearchInput('');
     setCurrentPage(1);
   };
 
@@ -306,8 +316,8 @@ export default function UserActivities() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Search by username, email, or IP address..."
-                  value={searchQuery}
+                  placeholder="Search by username, email, IP, or country..."
+                  value={searchInput}
                   onChange={(e) => handleSearch(e.target.value)}
                   className="pl-10"
                 />
@@ -477,6 +487,7 @@ export default function UserActivities() {
                       <th className="px-6 py-3 text-left">Activity</th>
                       <th className="px-6 py-3 text-left">Details</th>
                       <th className="px-6 py-3 text-left">IP Address</th>
+                      <th className="px-6 py-3 text-left">Country</th>
                       <th className="px-6 py-3 text-left">Timestamp</th>
                     </tr>
                   </thead>
@@ -532,6 +543,15 @@ export default function UserActivities() {
                               <code className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
                                 {activity.ip_address}
                               </code>
+                            ) : (
+                              <span className="text-xs text-gray-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4">
+                            {activity.country ? (
+                              <span className="text-sm text-gray-900 dark:text-white">
+                                {countryFlag(activity.country)} {activity.country}
+                              </span>
                             ) : (
                               <span className="text-xs text-gray-400">-</span>
                             )}

@@ -97,6 +97,7 @@ export interface UserActivity {
   activity_display: string;
   timestamp: string;
   ip_address?: string;
+  country?: string;
   user_agent?: string;
   details: Record<string, any>;
 }
