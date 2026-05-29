@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/react-query';
 import { Layout } from '@/components/layout/Layout';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,7 +35,8 @@ import {
   Monitor,
   Filter,
   X,
-  ChevronDown
+  ChevronDown,
+  RefreshCw
 } from 'lucide-react';
 
 // Turn a 2-letter ISO country code into its flag emoji via regional indicators
@@ -162,6 +165,17 @@ export default function UserActivities() {
   };
 
   const { data, isLoading, error } = useUsageStats(queryParams);
+
+  const queryClient = useQueryClient();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.usageStats.list(queryParams),
+    });
+    setIsRefreshing(false);
+  };
 
   const handleSearch = (query: string) => {
     setSearchInput(query);
@@ -335,6 +349,15 @@ export default function UserActivities() {
                   </span>
                 )}
                 <ChevronDown className={`h-4 w-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleRefresh}
+                disabled={isRefreshing || isLoading}
+                className="flex items-center space-x-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span>Refresh</span>
               </Button>
             </div>
 
