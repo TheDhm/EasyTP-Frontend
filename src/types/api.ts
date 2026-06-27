@@ -28,8 +28,10 @@ export interface App {
   status: string;
   deployment_status: boolean;
   is_deployed: boolean;
+  app_type?: 'novnc' | 'webrtc';
   novnc_url?: string;
   vnc_pass?: string;
+  vnc_user?: string;
   // New granular status fields
   stages?: DeploymentStages;
   message?: string;
