@@ -131,7 +131,7 @@ export const useAuthStore = create<AuthState>()(
 
       logout: () => {
         // Call API logout in background (don't await)
-        apiClient.logout().catch(console.error);
+        apiClient.logout(get().refreshToken).catch(console.error);
 
         // Clear state immediately
         set({
@@ -148,8 +148,10 @@ export const useAuthStore = create<AuthState>()(
       },
 
       refreshAuth: async (): Promise<boolean> => {
+        // localStorage, not this tab's in-memory state: refresh tokens are single-use
+        // (rotated and revoked on every refresh), and another tab may have rotated it.
+        const refreshToken = localStorage.getItem('refresh_token') ?? get().refreshToken;
         try {
-          const { refreshToken } = get();
           if (!refreshToken) return false;
 
           const response = await apiClient.refreshToken({ refresh: refreshToken });
@@ -167,6 +169,13 @@ export const useAuthStore = create<AuthState>()(
           return true;
 
         } catch (error) {
+          // Another tab won the race and already stored a newer token: adopt it
+          // instead of logging every tab out.
+          const latest = localStorage.getItem('refresh_token');
+          if (latest && latest !== refreshToken) {
+            set({ refreshToken: latest, accessToken: localStorage.getItem('access_token') });
+            return true;
+          }
           // Refresh failed, logout user
           get().logout();
           return false;

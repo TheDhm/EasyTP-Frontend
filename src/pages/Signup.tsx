@@ -28,7 +28,7 @@ const signupSchema = z.object({
   username: z.string()
     .min(3, 'Username must be at least 3 characters')
     .max(30, 'Username must be no more than 30 characters')
-    .regex(/^[a-zA-Z0-9_-]+$/, 'Username can only contain letters, numbers, hyphens, and underscores')
+    .regex(/^[a-zA-Z0-9]([a-zA-Z0-9_-]*[a-zA-Z0-9])?$/, 'Username can only contain letters, numbers, hyphens, and underscores, and must start and end with a letter or number')
     .refine((val) => !RESERVED_USERNAMES.includes(val.toLowerCase()), {
       message: 'This username is reserved and cannot be used',
     }),

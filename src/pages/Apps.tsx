@@ -147,7 +147,9 @@ export default function Apps() {
 
   // Build VNC URL with full parameters for direct connection
   const buildVncUrl = (novncUrl: string, vncPassword: string) => {
-    return `${novncUrl}/vnc.html?password=${vncPassword}&path=vnc&autoconnect=true&resize=remote&reconnect=true&show_dot=true`;
+    // Settings go in the fragment (#), which noVNC reads just like the query string
+    // but which browsers never send: the password stays out of proxy and server logs.
+    return `${novncUrl}/vnc.html#password=${vncPassword}&path=vnc&autoconnect=true&resize=remote&reconnect=true&show_dot=true`;
   };
 
   // Build the launch URL for an app, branching on its streaming type.

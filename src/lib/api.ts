@@ -91,9 +91,12 @@ class APIClient {
     });
   }
 
-  async logout(): Promise<void> {
+  // The refresh token is sent so the backend can revoke it; without it, logging out
+  // only forgets the token locally and it stays valid for its full lifetime.
+  async logout(refreshToken?: string | null): Promise<void> {
     return this.request<void>('/auth/logout/', {
       method: 'POST',
+      body: JSON.stringify(refreshToken ? { refresh_token: refreshToken } : {}),
     });
   }
 
